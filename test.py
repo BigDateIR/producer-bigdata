@@ -2,23 +2,41 @@ import json
 from kafka import KafkaProducer
 import time
 
-
-#to install kafka in python
-#pip install git+https://github.com/dpkp/kafka-python.git
-
 KAFKA_BROKER = "localhost:9092"
 KAFKA_TOPIC = "test2"
+JSONL_FILE_PATH = "producer-bigdata/boulder_flood_geolocated_tweets.json"
 
-JSONL_FILE_PATH = "boulder_flood_geolocated_tweets.json"
+def flatten_record(record):
+
+    if not record or not isinstance(record, dict):
+        print(f"Invalid record: {record}")
+        return None
+
+    hashtags = [hashtag.get("text", "") for hashtag in record.get("entities", {}).get("hashtags", [])]
+
+    return {
+        "created_at": record.get("created_at", "N/A"),
+        "tweet_id": record.get("id_str", "N/A"),
+        "text": record.get("text", "N/A"),
+        "user_id": record.get("user", {}).get("id_str", "N/A"),
+        "user_name": record.get("user", {}).get("name", "N/A"),
+        "hashtags": ",".join(hashtags),
+        "source": record.get("source", "N/A"),
+        "retweet_count": record.get("retweet_count", 0),
+        "favorite_count": record.get("favorite_count", 0),
+        "lang": record.get("lang", "N/A")
+    }
 
 def read_jsonl(file_path, batch_size=10):
-
+ 
     with open(file_path, 'r', encoding='utf-8') as file:
         batch = []
         for line in file:
             try:
                 record = json.loads(line.strip())
-                batch.append(record)
+                flattened_record = flatten_record(record)
+                if flattened_record:
+                    batch.append(flattened_record)
                 if len(batch) == batch_size:
                     yield batch
                     batch = []
@@ -29,13 +47,13 @@ def read_jsonl(file_path, batch_size=10):
             yield batch
 
 def send_to_kafka(producer, topic, batch):
- 
+
     for record in batch:
         producer.send(topic, value=record)
         print(f"Sent to Kafka: {record}")
 
 def main():
- 
+
     producer = KafkaProducer(
         bootstrap_servers=KAFKA_BROKER,
         value_serializer=lambda v: json.dumps(v).encode("utf-8")
