@@ -42,7 +42,7 @@ def flatten_record(record):
     }
 
 
-def read_jsonl(file_path, batch_size=10):
+def read_jsonl(file_path, batch_size=100):
 
     with open(file_path, "r", encoding="utf-8") as file:
         batch = []
@@ -78,9 +78,9 @@ def main():
     print("Connected to Kafka broker.")
 
     try:
-        for batch in read_jsonl(JSONL_FILE_PATH, batch_size=10):
+        for batch in read_jsonl(JSONL_FILE_PATH, batch_size=9000):
             send_to_kafka(producer, KAFKA_TOPIC, batch)
-            time.sleep(10)
+            time.sleep(5)
     except KeyboardInterrupt:
         print("Stopped by user.")
     except Exception as e:
